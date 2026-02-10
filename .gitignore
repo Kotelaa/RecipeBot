@@ -1,0 +1,17 @@
+token_data.py
+O.o.py
+.env
+
+.venv/
+venv/
+env/
+PYTHON_ENV/
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+.vscode/
+.idea/
+
+*.log
