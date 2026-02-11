@@ -1,6 +1,6 @@
 import asyncio
 
-from aiogram import Dispatcher, Bot
+from aiogram import Dispatcher, Bot, Router
 from aiogram import F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -9,9 +9,11 @@ from aiogram.types import Message
 from aiogram.utils.formatting import Bold, as_marked_list, as_list, as_line
 
 from token_data import TOKEN
+from app_keyboards import kb
+from recipes_handler import router as router_recipe
 
 dp = Dispatcher()
-
+router = Router()
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message):
@@ -27,7 +29,7 @@ async def command_start_handler(message: Message):
             marker='⯏'
         )
     )
-    await message.answer(content.as_html())
+    await message.answer(content.as_html(), reply_markup=kb)
 
 
 @dp.message(Command('description'))
@@ -36,7 +38,6 @@ async def command_description_handler(message: Message):
     """ Bot Description command handler """
     content = 'This bot provides information about recipies & ingredients!'
     await message.answer(content)
-
 
 
 @dp.message(Command('commands'))
@@ -48,6 +49,7 @@ async def commands_handler(message: Message):
         as_marked_list('/start',
         '/description',
         '/commands',
+        '/category_search_random',
         marker='⯏'
         )
     )
@@ -56,6 +58,7 @@ async def commands_handler(message: Message):
 
 async def main():
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dp.include_router(router_recipe)
     await dp.start_polling(bot)
 
 
