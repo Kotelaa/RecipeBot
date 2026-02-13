@@ -6,12 +6,26 @@ keyboard = [[KeyboardButton(text='Описание бота'),
 kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True,
                          input_field_placeholder="Выберите пункт меню...")
 
-# Сделать клавиатуру в линию, а не столбик
+
 def make_categories_kb(category_list):
+    row = []
     kb_categories = []
+
     for category in category_list:
-        kb_categories.append([KeyboardButton(text=category)])
+        row.append(KeyboardButton(text=category))
+        if len(row) == 3:
+            kb_categories.append(row)
+            row = []
+
+    if row:
+        kb_categories.append(row)
 
     keyboard_categories = ReplyKeyboardMarkup(keyboard=kb_categories,
                                           resize_keyboard=True)
     return keyboard_categories
+
+
+def show_recipe_kb():
+    kb = [[KeyboardButton(text='Покажи рецепты')]]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    return keyboard
