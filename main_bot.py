@@ -15,7 +15,7 @@ from recipes_handler import router as router_recipe
 dp = Dispatcher()
 router = Router()
 
-@dp.message(CommandStart())
+@router.message(CommandStart())
 async def command_start_handler(message: Message):
     """ Start command handler """
     content = as_list(
@@ -26,22 +26,24 @@ async def command_start_handler(message: Message):
         as_marked_list(
             Bold("Commands:"),
             '/description',
+            '/commands',
+            '/category_search_random',
             marker='⯏'
         )
     )
     await message.answer(content.as_html(), reply_markup=kb)
 
 
-@dp.message(Command('description'))
-@dp.message(F.text.casefold() == 'описание бота')
+@router.message(Command('description'))
+@router.message(F.text.casefold() == 'описание бота')
 async def command_description_handler(message: Message):
     """ Bot Description command handler """
     content = 'This bot provides information about recipies & ingredients!'
     await message.answer(content)
 
 
-@dp.message(Command('commands'))
-@dp.message(F.text.casefold() == 'команды')
+@router.message(Command('commands'))
+@router.message(F.text.casefold() == 'команды')
 async def commands_handler(message: Message):
     """The list of available commands"""
     content = as_list(
@@ -59,6 +61,7 @@ async def commands_handler(message: Message):
 async def main():
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp.include_router(router_recipe)
+    dp.include_router(router)
     await dp.start_polling(bot)
 
 
