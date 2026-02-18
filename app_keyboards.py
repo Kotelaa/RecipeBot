@@ -1,4 +1,5 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 
 keyboard = [[KeyboardButton(text='Описание бота'),
@@ -8,21 +9,12 @@ kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True,
 
 
 def make_categories_kb(category_list):
-    row = []
-    kb_categories = []
+    builder = ReplyKeyboardBuilder()
 
     for category in category_list:
-        row.append(KeyboardButton(text=category))
-        if len(row) == 3:
-            kb_categories.append(row)
-            row = []
-
-    if row:
-        kb_categories.append(row)
-
-    keyboard_categories = ReplyKeyboardMarkup(keyboard=kb_categories,
-                                          resize_keyboard=True)
-    return keyboard_categories
+        builder.add(KeyboardButton(text=category))
+    builder.adjust(3)
+    return builder.as_markup(resize_keyboard=True)
 
 
 def show_recipe_kb():
