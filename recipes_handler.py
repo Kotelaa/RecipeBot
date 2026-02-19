@@ -1,9 +1,11 @@
 import aiohttp
+import asyncio
 from aiogram import Router
 from aiogram.filters import CommandObject, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.formatting import Bold, as_marked_list, as_list
 from aiogram import html
 
 from random import choices
@@ -25,21 +27,29 @@ async def category_search_random(message: Message, command: CommandObject,
     if command.args and command.args.isdigit():
         count = int(command.args)
     else:
-        await message.answer('Please enter a number! For example: '
+        await message.answer('Пожалуйста, введите число! Например: '
                              '/category_search_random 3')
         return
 
     await state.update_data(recipe_count=count)
     category_list = await get_categories()
 
-    hint_message = html.bold('Please, select a category: \n\n')
+    categories = []
     for category in category_list:
         translation = translator.translate(category, dest='ru').text
-        hint_message += f'{category} — {translation}\n'
+        categories.append(f'{category} — {translation.lower()}')
+
+    hint_message = as_list(
+        Bold('Пожалуйста, выберите категорию: \n'),
+        as_marked_list(
+            *categories,
+            marker='· '
+        )
+    )
 
     keyboard = make_categories_kb(category_list)
     await state.set_state(SearchRecipe.waiting_for_category)
-    await message.answer(hint_message, reply_markup=keyboard, parse_mode='HTML')
+    await message.answer(hint_message.as_html(), reply_markup=keyboard)
 
 
 async def get_categories():
@@ -71,19 +81,24 @@ async def meals_by_category(message: Message, state: FSMContext):
             meals_list = data.get('meals', [])
 
     if not meals_list:
-        await message.answer('Recipe not found!')
+        await message.answer('Рецепты не найдены!')
         return
 
-    random_meals = choices(meals_list, k=recipe_count)
+    if len(meals_list) < recipe_count:
+        await message.answer(f"В этой категории только {len(meals_list)} рецептов. "
+                             f"Вот все рецепты из этой категории:")
+
+    min_recipe_count = min(recipe_count, len(meals_list))
+    random_meals = choices(meals_list, k=min_recipe_count)
     random_meals_id = [meal['idMeal'] for meal in random_meals]
     await state.update_data(random_meals_id=random_meals_id)
     await state.update_data(random_meals_name=random_meals)
 
-    response = 'Your recipes are: \n'
+    response = html.bold('Ваши рецепты:') + '\n'
     for meal in random_meals:
         en_name = meal.get('strMeal')
-        translation = translator.translate(en_name, dest='ru')
-        response += f'{translation.text}\n'
+        translation = translator.translate(en_name, dest='ru').text
+        response += f'·  {translation}\n'
 
     keyboard = show_recipe_kb()
     await state.set_state(SearchRecipe.waiting_for_recipe)
@@ -99,29 +114,33 @@ async def get_random_recipe(message: Message, state: FSMContext):
     meals_id = user_data.get('random_meals_id', [])
 
     if not meals_id:
-        await message.answer('The recipe list is empty!')
+        await message.answer('Список рецептов пуст!')
         return
 
-    response = html.bold('Your instructions for recipes are:') + '\n\n'
+    await message.answer("Готовлю инструкции, это может занять минуту... ")
 
     async with aiohttp.ClientSession() as session:
-        for meal in meals_id:
-            url = f'https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal}'
+        for meal_id in meals_id:
+            url = f'https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal_id}'
             async with session.get(url) as resp:
                 data = await resp.json()
                 meal_data = data.get('meals')[0] if data.get('meals') else None
 
                 if meal_data:
                     en_meal = meal_data.get('strMeal')
-                    en_instruction = meal_data.get('strInstructions')
+                    en_instr = meal_data.get('strInstructions')
 
                     ru_meal = translator.translate(en_meal, dest='ru').text
-                    ru_instruction = translator.translate(en_instruction,
-                                                          dest='ru').text
+                    ru_instr = translator.translate(en_instr, dest='ru').text
 
                     meal_bold = html.bold(ru_meal)
-                    instruction = html.quote(ru_instruction)
-                    response += f'{meal_bold}: \n {instruction}\n\n'
+                    instr = html.quote(ru_instr)
+                    recipe_message = f'{meal_bold}: \n\n {instr}\n\n'
 
-    await message.answer(response, parse_mode='HTML')
+                    if len(recipe_message) > 4096:
+                        recipe_message = recipe_message[:4096]
+
+                    await message.answer(recipe_message, parse_mode='HTML')
+
     await state.clear()
+

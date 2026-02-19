@@ -19,16 +19,15 @@ router = Router()
 async def command_start_handler(message: Message):
     """ Start command handler """
     content = as_list(
-        as_line('Hello ', Bold(message.from_user.full_name), "!"),
-        "This bot will tell you the recipes and what ingredients are needed "
-        "for each recipe.",
-        "\n",
+        as_line('Привет, ', Bold(message.from_user.full_name), "!"),
+        "Этот бот поможет вам найти рецепты и подскажет, какие ингредиенты "
+        "нужны для каждого блюда. \n",
+        Bold("Доступные команды:"),
         as_marked_list(
-            Bold("Commands:"),
-            '/description',
-            '/commands',
-            '/category_search_random',
-            marker='⯏'
+            '/description — описание бота',
+            '/commands — список всех команд',
+            '/category_search_random — поиск по категориям',
+            marker='· '
         )
     )
     await message.answer(content.as_html(), reply_markup=kb)
@@ -38,7 +37,8 @@ async def command_start_handler(message: Message):
 @router.message(F.text.casefold() == 'описание бота')
 async def command_description_handler(message: Message):
     """ Bot Description command handler """
-    content = 'This bot provides information about recipies & ingredients!'
+    content = ('Этот бот предоставляет подробную информацию о рецептах '
+               'и необходимых ингредиентах!')
     await message.answer(content)
 
 
@@ -50,9 +50,8 @@ async def commands_handler(message: Message):
         Bold("Команды: "),
         as_marked_list('/start',
         '/description',
-        '/commands',
         '/category_search_random',
-        marker='⯏'
+        marker='· '
         )
     )
     await message.answer(content.as_html())
@@ -69,4 +68,4 @@ if __name__ == '__main__':
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print('Closing bot!')
+        print('Бот выключен!')
