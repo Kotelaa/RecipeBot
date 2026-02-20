@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.formatting import Bold, as_marked_list, as_list
+from aiogram.types import ReplyKeyboardRemove
 from aiogram import html
 
 from random import choices
@@ -53,6 +54,7 @@ async def category_search_random(message: Message, command: CommandObject,
 
 
 async def get_categories():
+    """ The function allows you to get a list of categories from the API """
     url = f'https://www.themealdb.com/api/json/v1/1/list.php?c=list'
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
@@ -106,10 +108,8 @@ async def meals_by_category(message: Message, state: FSMContext):
 
 
 @router.message(SearchRecipe.waiting_for_recipe)
-async def get_random_recipe(message: Message, state: FSMContext):
-    """
-    Send random recipes to the user.
-    """
+async def send_recipies(message: Message, state: FSMContext):
+    """ Send all recipes to the user. """
     user_data = await state.get_data()
     meals_id = user_data.get('random_meals_id', [])
 
@@ -119,28 +119,48 @@ async def get_random_recipe(message: Message, state: FSMContext):
 
     await message.answer("Готовлю инструкции, это может занять минуту... ")
 
-    async with aiohttp.ClientSession() as session:
-        for meal_id in meals_id:
-            url = f'https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal_id}'
-            async with session.get(url) as resp:
-                data = await resp.json()
-                meal_data = data.get('meals')[0] if data.get('meals') else None
+    tasks = [send_single_recipe(meal_id, message) for meal_id in meals_id]
+    await asyncio.gather(*tasks)
 
-                if meal_data:
-                    en_meal = meal_data.get('strMeal')
-                    en_instr = meal_data.get('strInstructions')
-
-                    ru_meal = translator.translate(en_meal, dest='ru').text
-                    ru_instr = translator.translate(en_instr, dest='ru').text
-
-                    meal_bold = html.bold(ru_meal)
-                    instr = html.quote(ru_instr)
-                    recipe_message = f'{meal_bold}: \n\n {instr}\n\n'
-
-                    if len(recipe_message) > 4096:
-                        recipe_message = recipe_message[:4096]
-
-                    await message.answer(recipe_message, parse_mode='HTML')
-
+    await message.answer("Приятного аппетита! 🍽",
+                         reply_markup=ReplyKeyboardRemove())
     await state.clear()
+
+
+async def send_single_recipe(meal_id: str, message: Message):
+    """ Send single recipe logic """
+    url = f'https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            data = await resp.json()
+            meal = data.get('meals')[0] if data.get('meals') else None
+
+            if not meal: return
+
+            meal_en = meal.get('strMeal')
+            instr_en = meal.get('strInstructions')
+
+            meal_ru = translator.translate(meal_en, dest='ru').text
+            instr_ru = translator.translate(instr_en, dest='ru').text
+
+            all_ingredient = []
+            for i in range(1, 21):
+                ingredient = meal.get(f'strIngredient{i}')
+                measure = meal.get(f'strMeasure{i}')
+                if ingredient and ingredient.strip():
+                    ing_meas = f"{ingredient} ({measure})" if measure and measure.strip() else ingredient
+                    all_ingredient.append(ing_meas)
+
+            ingredients_en = ', '.join(all_ingredient)
+            ingredients_ru = translator.translate(ingredients_en,
+                                                  dest='ru').text
+
+            response = (f"Рецепт {html.bold(meal_ru)}: \n"
+                        f"\nИнгридиенты: {ingredients_ru}\n"
+                        f"\n{html.quote(instr_ru)}: \n")
+
+            if len(response) > 4096:
+                response = response[:4090] + '...'
+
+            await message.answer(response, parse_mode='HTML')
 

@@ -21,7 +21,7 @@ async def command_start_handler(message: Message):
     content = as_list(
         as_line('Привет, ', Bold(message.from_user.full_name), "!"),
         "Этот бот поможет вам найти рецепты и подскажет, какие ингредиенты "
-        "нужны для каждого блюда. \n",
+        "нужны для каждого блюда 🍵 \n",
         Bold("Доступные команды:"),
         as_marked_list(
             '/description — описание бота',
@@ -38,7 +38,7 @@ async def command_start_handler(message: Message):
 async def command_description_handler(message: Message):
     """ Bot Description command handler """
     content = ('Этот бот предоставляет подробную информацию о рецептах '
-               'и необходимых ингредиентах!')
+               'и необходимых ингредиентах! 🍵')
     await message.answer(content)
 
 
